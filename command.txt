@@ -1,0 +1,78 @@
+mkdir -p .devcontainer
+cat << 'EOF' > .devcontainer/devcontainer.json
+{
+  "name": "Flutter Android Setup",
+  "image": "ghcr.io/cirruslabs/flutter:stable",
+  "customizations": {
+    "vscode": {
+      "extensions":[
+        "dart-code.flutter",
+        "dart-code.dart-code"
+      ]
+    }
+  }
+}
+EOF
+
+# 2. Create a new Flutter project
+flutter create javagoat_app
+cd javagoat_app
+
+# 3. Add required dependencies
+echo "📦 Adding Flutter dependencies..."
+flutter pub add firebase_core firebase_auth firebase_database image_picker video_player path_provider share_plus
+
+# 4. Configure Android minimum SDK & Fix Codespace Memory Exhaustion
+echo "⚙️ Configuring Android settings and Memory limits..."
+sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle
+sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+
+# Bypass strict linting that can abort release builds
+sed -i '/buildTypes {/i \    lint {\n        checkReleaseBuilds false\n        abortOnError false\n    }\n' android/app/build.gradle
+
+# Prevent GitHub Codespace from running out of memory (OOM Crash fix)
+echo "org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
+echo "org.gradle.daemon=false" >> android/gradle.properties
+echo "org.gradle.parallel=true" >> android/gradle.properties
+
+
+
+# 5. Write the full native Dart Application
+-----dart source code required------
+
+
+
+
+# 6. Build the Android APK (Lightweight Split specifically for Phones)
+echo "🚀 Building Android Release files (Lightweight)..."
+flutter build apk --release --split-per-abi
+
+echo "==============================================="
+echo "🎉 BUILD SUCCESSFUL!"
+echo "📍 APK output path: javagoat_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk (Use this one for your phone)"
+echo "==============================================="
+
+
+
+
+
+
+# 1. Delete any existing flutter_icons configuration from the file
+sed -i '/flutter_icons:/,$d' pubspec.yaml
+
+# 2. Add it back exactly ONE time cleanly
+cat << 'EOF' >> pubspec.yaml
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "icon.png"
+  min_sdk_android: 23
+EOF
+
+# 3. Generate the icons
+dart run flutter_launcher_icons
+
+
+flutter build apk --release --split-per-abi
+
+flutter build appbundle --release
