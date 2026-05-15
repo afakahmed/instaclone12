@@ -1,0 +1,48 @@
+Write a complete `lib/main.dart` for a Flutter app called JavaGoat. This file will be dropped into a project built with these exact constraints — make sure the code is compatible:
+Build environment:
+
+* Flutter stable (Cirrus Labs Docker image)
+* Android minSdkVersion: 23
+* JVM heap limited to 1024m (Codespace) — so no heavy dependencies
+* Built with `flutter build apk --release --split-per-abi`
+Exact dependencies available (only use these, nothing else):
+
+* `firebase_core`
+* `firebase_auth`
+* `firebase_database`
+* `image_picker`
+* `video_player`
+* `path_provider`
+* `share_plus`
+Firebase config to hardcode: (paste your actual config values here)
+Architecture — single file, no external packages beyond the list above:
+
+1. AuthGate — StreamBuilder on `authStateChanges`, routes to AuthScreen or MainLayout
+2. AuthScreen — email/password login + signup toggle, obscure password toggle, Google button disabled (shows snackbar), no actual Google Auth import needed
+3. MainLayout — IndexedStack with 5 tabs, floating center add button that elevates above nav bar, pass `isActive: _currentIndex == 3` to ReelsView
+4. HomeView — stream from `posts` node limitToLast(30), reverse sort by timestamp, double-tap like, follow/unfollow via `following/$myUid/$targetUid` and `followers/$targetUid/$myUid` nodes, comment bottom sheet (CommentSheet widget), share via share_plus
+5. ChatListView + ChatScreen — list all users from `users` node excluding self, global channel at `chats` path, private DMs at `private_chats/private_{sortedUid1}_{sortedUid2}`, real-time StreamBuilder messages, bubble UI
+6. UploadView — image_picker for photo (imageQuality: 70) and video (maxDuration 15s), base64 encode with `dart:convert`, prefix with data URI (`data:image/jpeg;base64,...` or `data:video/mp4;base64,...`), photos saved to `posts` node, videos to `reels` node — NO Firebase Storage used anywhere
+7. ReelsView + ReelPlayer — vertical PageView, decode base64 video, write bytes to temp file via `path_provider` (`getTemporaryDirectory()`), initialize `VideoPlayerController.file()`, setLooping true, play only when `isActive` is true, pause on `didUpdateWidget` when isActive goes false, like/dislike toggle on Firebase, share_plus share
+8. ProfileView — SliverAppBar expandedHeight 200, gradient cover (`#6366F1` to `#0D6EFD`), avatar centered at overlap between cover and content, stream `users/$uid` for photo and username, live post count via `orderByChild('uid').equalTo(uid)`, live follower/following count from `followers/$uid` and `following/$uid` nodes, edit profile dialog with username field + photo picker (base64), logout button in appbar actions, SliverGrid of user's posts (3 columns)
+Storage rule: Every image and video is stored as a base64 string directly in Firebase Realtime Database. No Firebase Storage. Write a `buildBase64Image()` helper that handles both `http` URLs and base64 strings (strip the data URI prefix before decoding).
+Design:
+
+* `navColor = Color(0xFF0D6EFD)`
+* `accentYellow = Color(0xFFFFCA28)`
+* `bgBody = Color(0xFFF8FAFC)`
+* Font family: Poppins
+* Rounded corners (BorderRadius 15–20) everywhere
+* White cards, elevation 0 or minimal
+* AppBar: white background, no elevation
+Important implementation details to avoid runtime errors:
+
+* Wrap Firebase.initializeApp in try/catch
+* All Firebase list reads: cast value as `Map`, iterate with `forEach`, build a `List<Map>`, then sort
+* `ServerValue.timestamp` for all timestamps
+* Guard all `mounted` checks before setState after async calls
+* In ReelPlayer, use unique filename with `DateTime.now().millisecondsSinceEpoch` to avoid file conflicts
+* `Share.share()` not `Share.shareFiles()` (share_plus API)
+* Never use `Form` widget (causes issues in some Flutter versions) — use plain `TextField` with controllers
+* Permissions: INTERNET is already in AndroidManifest, no need to request it in code
+Give me only the complete Dart code for `lib/main.dart`, no explanation, no markdown fencing, starting directly with the import statements.
